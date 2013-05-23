@@ -1,0 +1,20 @@
+{
+  "name": "rd-parse",
+  "version": "0.0.0",
+  "description": "Generic minimalist recursive descent parser. Define your grammar in pure Javascript.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dmaevsky/rd-parse.git"
+  },
+  "keywords": [
+    "recursive",
+    "descent",
+    "parser"
+  ],
+  "author": "Dmitry Maevsky",
+  "license": "MIT"
+}
