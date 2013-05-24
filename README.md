@@ -1,4 +1,3 @@
-----
 ## rd-parse
 A generic minimalist recursive-descent parser in Javascript.
 
