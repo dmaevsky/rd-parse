@@ -1,5 +1,6 @@
 ## rd-parse
 A generic minimalist recursive-descent parser in Javascript.
+Originally inspired by [Oleg Andreev's blog post and code](http://blog.oleganza.com/post/106246432/recursive-descent-parser-in-javascript)
 
 **rd-parse** allows you to define your grammar directly in Javascript in a very expressive human readable fashion. Check out [an example](https://github.com/dmaevsky/keppel.git). It should be pretty much self-explanatory.
 

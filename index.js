@@ -1,15 +1,22 @@
 module.exports = Parser;
 
 function Parser(grammar) {
-  var text;
-  var lineNo, colNo, lastPos;     // Used in error reporting only
 
-  this.input = function(inputText) {
-    text = inputText;
-    lineNo = colNo = 1;
-    lastPos = 0;
-    return this;
+  function Context(text) {
+    this.text = text;
+    this.lastPos = 0;
+    this.lineNo = this.colNo = 1;
+
+    // Track last accepted char position (for error reporting)
+    this.track = function(pos) {
+      if (pos >= this.lastPos) {
+        this.lastPos++;
+        if (this.text[pos] === '\n') { this.lineNo++;  this.colNo = 1; }
+        else this.colNo++;
+      }
+    }
   }
+  Parser.Context = Context;   // Expose Context to module consumers
 
   // Match a sequence of rules left to right
   function All() {
@@ -36,7 +43,7 @@ function Parser(grammar) {
     }
   }
 
-  // Match a rule 1 or more times (fixed point combinator)
+  // Match a rule 1 or more times
   function Plus(rule) {
     return function($) {
       var $cur, $next;
@@ -52,6 +59,7 @@ function Parser(grammar) {
       if ($next !== $) return $next;
       return {
         capture: $.capture,
+        context: $.context,
         pos: $.pos
       }
     }
@@ -60,16 +68,13 @@ function Parser(grammar) {
   // Scan 1 symbol from input validating against alphabet (RegEx)
   function Char(alphabet) {
     return function($) {
-      if ($.pos >= text.length) return $;
-      if (!alphabet.test(text[$.pos])) return $;
-      // track last accepted char
-      if ($.pos >= lastPos) {
-        lastPos++;
-        if (text[$.pos] === '\n') { lineNo++;  colNo = 1; }
-        else colNo++;
-      }
+      if ($.pos >= $.context.text.length) return $;
+      if (!alphabet.test($.context.text[$.pos])) return $;
+      $.context.track($.pos);
+
       return {
         capture: $.capture,
+        context: $.context,
         pos: $.pos + 1
       }
     }
@@ -82,7 +87,7 @@ function Parser(grammar) {
       if ($next !== $) {
         var afterNode = { prev: $next.capture };
         afterNode.name = nameAfter;
-        if (nameAfter[0] !== '@') afterNode.value = text.substr($.pos, $next.pos - $.pos);
+        if (nameAfter[0] !== '@') afterNode.value = $.context.text.substr($.pos, $next.pos - $.pos);
         $next.capture.next = afterNode;
         $next.capture = afterNode;
 
@@ -97,33 +102,27 @@ function Parser(grammar) {
     }
   }
 
-  // Enable self reference in grammar
-  var parsingFunction;
-  this.grammar = function($) {
-    return parsingFunction($);
-  }
+  this.parsingFunction = grammar(All, Any, Plus, Optional, Char, Capture);
 
-  parsingFunction = grammar.call(this, All, Any, Plus, Optional, Char, Capture);
-
-  this.parse = function() {
+  this.parse = function(text) {
     var $ = {
-      capture: {}           // capture stream
-    , pos: 0                // current position in the text
+      capture: {}                       // capture stream
+    , context: new Context(text)        // parsing context
+    , pos: 0                            // current position in the text
     }
 
-    var $next = parsingFunction($);
-    if ($next.pos != text.length) {
+    var $next = this.parsingFunction($);
+
+    var c = $.context;
+    if ($next.pos != c.text.length) {
       var msg;
-      if (lastPos >= text.length) msg = 'Unexpected end if input';
-      else msg = 'Unexpected token at (' + lineNo + ':' + colNo + ')';
-      var err = Error(msg);
+      if (c.lastPos >= c.text.length) msg = 'Unexpected end if input';
+      else msg = 'Unexpected token at (' + c.lineNo + ':' + c.colNo + ')';
+      var err = new Error(msg);
       err.$ = $next;
-      err.lastPos = lastPos;
-      err.lineNo= lineNo;
-      err.colNo = colNo;
       throw err;
     }
     $next.capture.next = null;
-    return $.capture;
+    return [$.capture, $next.capture];
   }
 }
