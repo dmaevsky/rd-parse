@@ -116,7 +116,7 @@ function Parser(grammar) {
     var c = $.context;
     if ($next.pos != c.text.length) {
       var msg;
-      if (c.lastPos >= c.text.length) msg = 'Unexpected end if input';
+      if (c.lastPos >= c.text.length) msg = 'Unexpected end of input';
       else msg = 'Unexpected token at (' + c.lineNo + ':' + c.colNo + ')';
       var err = new Error(msg);
       err.$ = $next;
