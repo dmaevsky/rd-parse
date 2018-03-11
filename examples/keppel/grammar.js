@@ -22,10 +22,10 @@ function Grammar(Token, All, Any, Plus, Optional, Node) {
     var attachThisGrammar = prop => function() { return thisGrammar(prop).apply(null, arguments); }
 
     var tagAttr = Node(All(identifier('name'), '=', text('value')), {})();
-    var tagAttrBlock = Node(All('(', tagAttr, Optional(Plus(All(',', tagAttr))), ')'), [])('attributes', 'rawAttributes');
+    var tagAttrBlock = Node(All('(', tagAttr, Optional(Plus(All(',', tagAttr))), ')'), [])('attributes');
     var tagId = All('#', identifier('id'));
     var tagClasses = Node(Plus(All('.', identifier(0))), [])('classes');
-    var tagHeader = Node(All(identifier('name'), Optional(tagAttrBlock), Optional(tagId), Optional(tagClasses)), {})('header');
+    var tagHeader = Node(All(identifier('name'), Optional(tagAttrBlock), Optional(tagId), Optional(tagClasses)), {})('header', 'anchors');
     var tagBody = All('[', attachThisGrammar('body'), ']');
     var tag = Node(All(tagHeader, Optional(tagBody)), { type: 'tag'})();
     var freeText = Node(text('value'), { type: 'free text'})();

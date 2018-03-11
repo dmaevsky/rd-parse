@@ -18,8 +18,8 @@ function Parser(grammar) {
     // Bind text in a capture
     var tracker = {
       lastSeen: null,
-      raw: function(node) {
-        return text.substring(node.start, this.lastSeen.end);
+      raw: function(start, end) {
+        return text.substring(start, end || this.lastSeen.end);
       }
     }
 
@@ -180,12 +180,20 @@ function Parser(grammar) {
     }
   }
 
+  // A default hook that just captures anchor positions in the input corresponding to the matched rule
+  function RawHook(rawProp) {
+    return function($, $next) {
+      $next.ast[rawProp] = [$.token.start, $.token.tracker.lastSeen.end];
+    }
+  }
+
   // Puts the matched rule to a new AST node, created by copying the prototype,
   // and returns a function to attach it to the parent AST object as prop (or push to the parent array)
-  // optionally saving the whole raw input corresponding to the matched rule
+  // optionally calling an external hook BEFORE the rule's AST is attached to the parent
   function Node(rule, prototype) {
 
-    return function(prop, rawProp) {
+    return function(prop, hook) {
+      if (typeof(hook) === 'string') hook = RawHook(hook);
     
       return function($) {
         var $cur = {
@@ -196,6 +204,8 @@ function Parser(grammar) {
         var $next = rule($cur);
         if ($next === $cur) return $;
 
+        if (hook) hook($, $next);
+
         if (!$.ast) return $next;
 
         // Attach the matched node to the parent AST
@@ -203,8 +213,6 @@ function Parser(grammar) {
           $.ast.push($next.ast);
         }
         else {
-          // Grab the raw input if requested
-          if (rawProp) $.ast[rawProp] = $.token.tracker.raw($.token);
           $.ast[prop] = $next.ast;
         }
 
