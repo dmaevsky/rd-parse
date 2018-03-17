@@ -1,7 +1,7 @@
 # rd-parse
 A generic minimalist zero dependencies recursive-descent parser in Javascript.
 
-The version 1.0 is a complete re-write.
+The API in version 2.0 is now more or less stable. No radical changes planned at the moment.
 I added a proper regex-based lexer stage to split the input text into lexical tokens before passing it to the parser. This simplifies the grammar definition tremendously. The parser now produces an AST according to the specified grammar.
 I also added an examples folder, and I will add more grammar examples shortly.
 

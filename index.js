@@ -156,7 +156,7 @@ function Parser(grammar) {
 
       // We have a match
       let stack = $.context.stack;
-      stack.push(reducer(stack.splice($.sp)));
+      stack.push(reducer(stack.splice($.sp), $, $next));
 
       return Object.assign({}, $next, { sp: stack.length });
     }
