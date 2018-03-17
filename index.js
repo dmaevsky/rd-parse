@@ -12,18 +12,10 @@ function Parser(grammar) {
     });
   }
 
-  // Lexer: returns a linked list of matched tokens
+  // Lexer: split the text into an array of lexical token nodes
   this.lexer = function(text) {
 
-    // Bind text in a capture
-    var tracker = {
-      lastSeen: null,
-      raw: function(start, end) {
-        return text.substring(start, end || this.lastSeen.end);
-      }
-    }
-
-    var head = null, tail = null, pos = 0;
+    var nodes = [], pos = 0;
 
     while (pos < text.length) {
       var here = pos;
@@ -40,46 +32,34 @@ function Parser(grammar) {
           
           if (token.type === IGNORE) break;
 
-          var node = {
+          nodes.push({
             start: here,
             end: pos,
             type: token.type,
             captures: match.slice(1),
-            tracker: tracker
-          };
-
-          // Append the node to the linked list
-          if (!tail) {
-            head = tail = node;
-          }
-          else {
-            tail.next = node;
-            tail = tail.next;
-          }
+          });
           break;
         }
       }
 
       if (pos === here) {
         // We tried all the tokens but could not move forward -> something is wrong
-        throw new Error('Unexpected token at position ' + pos);
+        throw new Error('Unexpected token at position ' + pos + '. Remainder: ' + text.substr(pos));
       }
     }
-    return head;
+    return nodes;
   }
 
   // ==============
   // GRAMMAR PARSER
   // ==============
 
-  // Helper to advance the state when match is found
-  function nextToken($) {
-    $.token.tracker.lastSeen = $.token;
-
-    return {
-      token: $.token.next,
-      ast: $.ast
+  // Keep track of the last matched token and advance to the next
+  function nextToken($, newProp) {
+    if ($.context.lastSeen < $.ti) {
+      $.context.lastSeen = $.ti;
     }
+    return Object.assign({}, $, newProp);
   }
 
   var self = this;
@@ -87,9 +67,10 @@ function Parser(grammar) {
   // Match verbatim text
   function Verbatim(text) {
     return function($) {
-      if (!$.token || $.token.type !== VERBATIM) return $;
-      if ($.token.captures[0] !== text) return $;
-      return nextToken($);
+      let token = $.context.tokens[$.ti];
+      if (!token || token.type !== VERBATIM) return $;
+      if (token.captures[0] !== text) return $;
+      return nextToken($, { ti: $.ti + 1});
     }
   }
 
@@ -97,29 +78,15 @@ function Parser(grammar) {
   function Token(pattern, type) {
     self.registerToken(pattern, type);
 
-    return function() {
-      var captures = Array.prototype.slice.apply(arguments);
+    return function($) {
+      let token = $.context.tokens[$.ti];
+      if (!token || token.type !== type) return $;
 
-      return function($) {
-        if (!$.token || $.token.type !== type) return $;
-  
-        // Type is matched -> copy all captures to the current AST node
-
-        if (Array.isArray($.ast)) {
-          // If current AST node is an Array, captures are indices into token captures
-          captures.forEach(function(index) {
-            $.ast.push($.token.captures[index]);
-          });
-        }
-        else {
-          // Otherwise, captures are properties that are assigned to token captures in order
-          captures.forEach(function(key, i) {
-            $.ast[key] = $.token.captures[i];
-          });  
-        }
-  
-        return nextToken($);
-      }  
+      // Type is matched -> push all captures to the stack
+      let stack = $.context.stack;
+      stack.splice($.sp);
+      stack.push(...token.captures);
+      return nextToken($, { ti: $.ti + 1, sp: stack.length });
     }
   }
 
@@ -180,69 +147,47 @@ function Parser(grammar) {
     }
   }
 
-  // A default hook that just captures anchor positions in the input corresponding to the matched rule
-  function RawHook(rawProp) {
-    return function($, $next) {
-      $next.ast[rawProp] = [$.token.start, $.token.tracker.lastSeen.end];
-    }
-  }
-
-  // Puts the matched rule to a new AST node, created by copying the prototype,
-  // and returns a function to attach it to the parent AST object as prop (or push to the parent array)
-  // optionally calling an external hook BEFORE the rule's AST is attached to the parent
-  function Node(rule, prototype) {
-
-    return function(prop, hook) {
-      if (typeof(hook) === 'string') hook = RawHook(hook);
+  function Node(rule, reducer) {
+    rule = Apply(rule);
     
-      return function($) {
-        var $cur = {
-          token: $.token,
-          ast: Array.isArray(prototype) ? Array.from(prototype) : Object.assign({}, prototype)
-        };
+    return function($) {
+      var $next = rule($);
+      if ($next === $) return $;
 
-        var $next = rule($cur);
-        if ($next === $cur) return $;
+      // We have a match
+      let stack = $.context.stack;
+      stack.push(reducer(stack.splice($.sp)));
 
-        if (hook) hook($, $next);
-
-        if (!$.ast) return $next;
-
-        // Attach the matched node to the parent AST
-        if (Array.isArray($.ast)) {
-          $.ast.push($next.ast);
-        }
-        else {
-          $.ast[prop] = $next.ast;
-        }
-
-        return {
-          token: $next.token,
-          ast: $.ast
-        }
-      }
+      return Object.assign({}, $next, { sp: stack.length });
     }
   }
 
 
-  this.parsingFunction = grammar(Token, All, Any, Plus, Optional, Node)();
+  this.parsingFunction = grammar(Token, All, Any, Plus, Optional, Node);
 
   this.parse = function(text) {
 
+    var context = {
+      text,
+      tokens: this.lexer(text),
+      stack: [],
+      lastSeen: -1,
+    }
+
     var $ = {
-      token: this.lexer(text),
-      ast: null
+      ti: 0, sp: 0,
+      context
     }
 
     var $next = this.parsingFunction($);
 
-    if ($next.token) {
+    if ($next.ti < context.tokens.length) {
       // Haven't consumed the whole input
       var err = new Error("Parsing failed");
-      err.lastSeen = $.token.tracker.lastSeen;
+      err.context = context;
       throw err;
     }
 
-    return $next.ast;
+    return context.stack[0];
   }
 }
