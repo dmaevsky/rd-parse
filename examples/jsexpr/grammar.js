@@ -40,7 +40,7 @@ function Grammar(Token, All, Any, Plus, Optional, Node) {
     Token(/(=>|\.\.\.|\|\||&&|>>>|>>|<<|<=|>=|\btypeof\b|\binstanceof\b|\bin\b|===|!==|!=|==|\+\+|--|\bnew\b|[{}[\]().?:|&=,^%*/<>+\-~!])/g, 'verbatim');
 
     const IdentifierToken = Token(/([a-zA-Z_$][a-zA-Z0-9_$]*)/g, 'identifier');
-    const Identifier = Node(IdentifierToken, ([name]) => ({ type: 'Identifier', name }));
+    const Identifier = Node(IdentifierToken, ([name], $) => ({ type: 'Identifier', name, anchors: [$.context.tokens[$.ti].start, $.context.tokens[$.ti].end] }));
 
     // Literals
     const StringLiteral = Node(StringToken, ([value]) => ({ type: 'Literal', value }));
@@ -83,7 +83,7 @@ function Grammar(Token, All, Any, Plus, Optional, Node) {
 
     // Member expression
     const ArgumentsList = All(Element, Star(All(',', Element)));
-    const Arguments = Node(All('(', ArgumentsList, Optional(','), ')'), args => ({ args }));
+    const Arguments = Node(All('(', Optional(All(ArgumentsList, Optional(','))), ')'), args => ({ args }));
 
     const PropertyAccess = Any(All('.', Identifier), ComputedPropertyName);
     const MemberExpression = Node(All(PrimaryExpression, Star(Any(PropertyAccess, Arguments))),

@@ -1,6 +1,6 @@
 {
   "name": "rd-parse",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Generic minimalist recursive descent parser. Define your grammar in pure Javascript.",
   "main": "index.js",
   "scripts": {
