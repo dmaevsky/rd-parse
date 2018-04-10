@@ -1,6 +1,6 @@
 var fs = require('fs');
-var Parser = require('../../../index');
-var Grammar = require('../grammar');
+var Parser = require('../src/index');
+var Grammar = require('../src/examples/keppel/grammar');
 
 try {
   var text = fs.readFileSync(process.argv[2], {encoding: 'utf-8'});

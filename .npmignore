@@ -1,12 +1,12 @@
 .vscode
-!.gitignore
 
 # dependencies
 /node_modules
 
 # testing
 /coverage
+/test
 
-# distribution (npm)
-/dist
+# dist is distributed, src is ignored
+/src
 

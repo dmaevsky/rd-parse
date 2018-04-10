@@ -10,7 +10,7 @@ The mutating constructs such as increment / decrement / assignment operators, as
 Usage:
 ```javascript
     var Parser = require('rd-parse');
-    var Grammar = require('rd-parse/examples/jsexpr/grammar');
+    var Grammar = require('rd-parse/dist/examples/jsexpr/grammar');
 
     var p = new Parser(Grammar);
 

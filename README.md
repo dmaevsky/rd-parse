@@ -4,17 +4,17 @@ A generic minimalist zero dependencies recursive-descent parser in Javascript.
 You define your grammar directly in Javascript, in an EBNF fashion: see the examples.
 The parser produces an AST according to the specified grammar.
 
-To witness the sheer power of this tool, please check out the  [ES2015 expression grammar](https://github.com/dmaevsky/rd-parse/tree/master/examples/jsexpr):
+To witness the sheer power of this tool, please check out the  [ES2015 expression grammar](https://github.com/dmaevsky/rd-parse/tree/master/src/examples/jsexpr):
 Javascript expression grammar, defined in Javascript, and parsed by Javascript !
 
-API v2.1 is now stable. No more breaking changes planned at the moment.
+API v2.1 is now stable.
 
     npm install --save rd-parse
 
 Usage:
 ```javascript
     var Parser = require('rd-parse');
-    var Grammar = require('rd-parse/examples/jsexpr/grammar');
+    var Grammar = require('rd-parse/dist/examples/jsexpr/grammar');
 
     var p = new Parser(Grammar);
 
@@ -83,7 +83,7 @@ For example we can wrap the `SumExpression` above in a `Node`:
 using the power of ES6 arrow functions, destructuring arguments, and shorthand notation.
 The AST for the input `'a = b + c'` would be `{ type: 'Assignment', result: 'a', left: 'b', right: 'c' }`
 
-The [ES2015 expression grammar](https://github.com/dmaevsky/rd-parse/tree/master/examples/jsexpr) illustrates many useful constructions.
+The [ES2015 expression grammar](https://github.com/dmaevsky/rd-parse/tree/master/src/examples/jsexpr) illustrates many useful constructions.
 Send me an email if you have questions :)
 
 ### Special thanks
