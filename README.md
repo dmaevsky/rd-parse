@@ -1,20 +1,22 @@
 # rd-parse
-A generic minimalist zero dependencies recursive-descent parser in Javascript.
+A generic minimalist zero dependencies recursive-descent parser generator in Javascript.
 
 You define your grammar directly in Javascript, in an EBNF fashion: see the examples.
 The parser produces an AST according to the specified grammar.
 
-To witness the sheer power of this tool, please check out the  [ES2015 expression grammar](https://github.com/dmaevsky/rd-parse/tree/master/src/examples/jsexpr):
+To witness the sheer power of this tool, please check out the  [ES2015 expression grammar](https://github.com/dmaevsky/rd-parse-jsexpr/blob/master/src/grammar.js):
 Javascript expression grammar, defined in Javascript, and parsed by Javascript !
 
-API v2.1 is now stable.
+API is now stable.
+
+**!!! NOTE !!!** The jsexpr grammar in src/examples has now moved to [it's own repository](https://github.com/dmaevsky/rd-parse-jsexpr)
 
     npm install --save rd-parse
 
 Usage:
 ```javascript
     var Parser = require('rd-parse');
-    var Grammar = require('rd-parse/dist/examples/jsexpr/grammar');
+    var Grammar = require('rd-parse-jsexpr');
 
     var p = new Parser(Grammar);
 
