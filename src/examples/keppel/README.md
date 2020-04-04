@@ -1,4 +1,5 @@
 ## keppel
+
 A wannabe template engine compiling to HTML. I basically created it as a usage example of [rd-parse](https://github.com/dmaevsky/rd-parse.git) - a generic minimalist recursive descent parser written in Javascript, and allowing you to define your grammar in pure Javascript as well.
 
 The Keppel grammar is quite closely following the main traits of [Jade](http://jade-lang.com/) except for the fact it does not rely on white space to generate the markup. For instance:
@@ -30,4 +31,3 @@ compiles to
     </body>
 
 However, using [rd-parse](https://github.com/dmaevsky/rd-parse.git) it is quite easy to generate your own grammars and template engines. So, feel free to fork it and use it as you wish :)
-

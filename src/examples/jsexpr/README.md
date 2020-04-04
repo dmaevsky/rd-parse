@@ -8,15 +8,16 @@ It is an "immutable" pure functional reduction of the ECMAScript grammar: loosel
 The mutating constructs such as increment / decrement / assignment operators, as well as higher level language constructs (loops, classes etc) are excluded.
 
 Usage:
+
 ```javascript
-    var Parser = require('rd-parse');
-    var Grammar = require('rd-parse/dist/examples/jsexpr/grammar');
+var Parser = require('rd-parse');
+var Grammar = require('rd-parse/dist/examples/jsexpr/grammar');
 
-    var p = new Parser(Grammar);
+var p = new Parser(Grammar);
 
-    var ast = p.parse("[1,2,3].map(a => a*a).reduce((a,b) => a + b)");
+var ast = p.parse('[1,2,3].map(a => a*a).reduce((a,b) => a + b)');
 
-    console.log(JSON.stringify(ast, null, 2));      // Pretty print your AST
+console.log(JSON.stringify(ast, null, 2)); // Pretty print your AST
 ```
 
 I tried to keep the AST as close as possible to the format produced by another popular JS expression parser [jsep](http://jsep.from.so/).
