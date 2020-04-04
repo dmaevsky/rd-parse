@@ -4,7 +4,7 @@
   "description": "Generic minimalist recursive descent parser. Define your grammar in pure Javascript.",
   "main": "./dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "build": "babel src --out-dir dist",
     "format": "prettier --write ./src",
     "prepublish": "npm run build"
@@ -24,6 +24,7 @@
     "@babel/cli": "^7.5.5",
     "@babel/core": "^7.5.5",
     "@babel/preset-env": "^7.5.5",
+    "jest": "^25.2.7",
     "prettier": "^2.0.2"
   }
 }

@@ -1,17 +1,15 @@
-module.exports = Grammar;
-
-function Grammar(Token, All, Any, Plus, Optional, Node) {
-  // Y combinator
-  const Y = function (gen) {
-    return (function (f) {
-      return f(f);
-    })(function (f) {
-      return gen(function () {
-        return f(f).apply(null, arguments);
-      });
+// Y combinator
+const Y = function (gen) {
+  return (function (f) {
+    return f(f);
+  })(function (f) {
+    return gen(function () {
+      return f(f).apply(null, arguments);
     });
-  };
+  });
+};
 
+function grammar({ Token, All, Any, Plus, Optional, Node }) {
   return Y(function (ThisGrammar) {
     // Special token types
     Token(/\s+|\/\/.*$/g, 'ignore'); // Ignore line comments and all whitespace
@@ -44,3 +42,5 @@ function Grammar(Token, All, Any, Plus, Optional, Node) {
     return Node(Plus(Any(Tag, FreeText)), (stack) => stack);
   });
 }
+
+module.exports = grammar;
