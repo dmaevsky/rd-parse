@@ -3,6 +3,114 @@
 exports[`The keppel grammar parses a test file 1`] = `
 [
   {
+    "type": "tag",
+    "name": "body",
+    "body": [
+      {
+        "type": "tag",
+        "name": "div",
+        "id": "navbar",
+        "classes": [
+          "navbar",
+          "navbar-inverse",
+          "navbar-fixed-top"
+        ],
+        "body": [
+          {
+            "type": "tag",
+            "name": "div",
+            "classes": [
+              "navbar-inner"
+            ],
+            "body": [
+              {
+                "type": "tag",
+                "name": "a",
+                "attributes": [
+                  {
+                    "name": "href",
+                    "value": "#"
+                  },
+                  {
+                    "name": "test",
+                    "value": "My test"
+                  }
+                ],
+                "classes": [
+                  "brand"
+                ],
+                "body": [
+                  {
+                    "type": "free text",
+                    "value": "Awesome"
+                  }
+                ]
+              },
+              {
+                "type": "tag",
+                "name": "ul",
+                "classes": [
+                  "nav"
+                ],
+                "body": [
+                  {
+                    "type": "tag",
+                    "name": "li",
+                    "body": [
+                      {
+                        "type": "tag",
+                        "name": "a",
+                        "attributes": [
+                          {
+                            "name": "href",
+                            "value": "#"
+                          }
+                        ],
+                        "body": [
+                          {
+                            "type": "free text",
+                            "value": "Item 1"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "tag",
+                    "name": "li",
+                    "body": [
+                      {
+                        "type": "tag",
+                        "name": "a",
+                        "attributes": [
+                          {
+                            "name": "href",
+                            "value": "#"
+                          }
+                        ],
+                        "body": [
+                          {
+                            "type": "free text",
+                            "value": "Item 2"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+`;
+
+exports[`The keppel grammar parses another test file 1`] = `
+[
+  {
     "type": "free text",
     "value": "<!DOCTYPE html>"
   },
@@ -273,114 +381,6 @@ exports[`The keppel grammar parses a test file 1`] = `
                                 ]
                               }
                             ]
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
-]
-`;
-
-exports[`The keppel grammar parses another test file 1`] = `
-[
-  {
-    "type": "tag",
-    "name": "body",
-    "body": [
-      {
-        "type": "tag",
-        "name": "div",
-        "id": "navbar",
-        "classes": [
-          "navbar",
-          "navbar-inverse",
-          "navbar-fixed-top"
-        ],
-        "body": [
-          {
-            "type": "tag",
-            "name": "div",
-            "classes": [
-              "navbar-inner"
-            ],
-            "body": [
-              {
-                "type": "tag",
-                "name": "a",
-                "attributes": [
-                  {
-                    "name": "href",
-                    "value": "#"
-                  },
-                  {
-                    "name": "test",
-                    "value": "My test"
-                  }
-                ],
-                "classes": [
-                  "brand"
-                ],
-                "body": [
-                  {
-                    "type": "free text",
-                    "value": "Awesome"
-                  }
-                ]
-              },
-              {
-                "type": "tag",
-                "name": "ul",
-                "classes": [
-                  "nav"
-                ],
-                "body": [
-                  {
-                    "type": "tag",
-                    "name": "li",
-                    "body": [
-                      {
-                        "type": "tag",
-                        "name": "a",
-                        "attributes": [
-                          {
-                            "name": "href",
-                            "value": "#"
-                          }
-                        ],
-                        "body": [
-                          {
-                            "type": "free text",
-                            "value": "Item 1"
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "type": "tag",
-                    "name": "li",
-                    "body": [
-                      {
-                        "type": "tag",
-                        "name": "a",
-                        "attributes": [
-                          {
-                            "name": "href",
-                            "value": "#"
-                          }
-                        ],
-                        "body": [
-                          {
-                            "type": "free text",
-                            "value": "Item 2"
                           }
                         ]
                       }

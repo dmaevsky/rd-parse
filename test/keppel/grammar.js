@@ -1,3 +1,5 @@
+const stringGrammar = require('../string/grammar');
+
 // Y combinator
 const Y = function (gen) {
   return (function (f) {
@@ -9,18 +11,21 @@ const Y = function (gen) {
   });
 };
 
-function grammar({ Token, All, Any, Plus, Optional, Node }) {
-  return Y(function (ThisGrammar) {
-    // Special token types
-    Token(/\s+|\/\/.*$/g, 'ignore'); // Ignore line comments and all whitespace
-    Token(/([\[\]\(\)#=,\.])/g, 'verbatim');
+function grammar(ParserEngine) {
+  const String_ = stringGrammar(ParserEngine);
+  const { Token, All, Any, Plus, Optional, Node } = ParserEngine;
+  return Y(function (Expression) {
+    const Whitespace = Token(/\s+/, 'whitespace');
+    const _ = Optional(Whitespace);
 
-    const Identifier = Token(/([a-zA-Z][a-zA-Z0-9_-]*)/g, 'identifier');
-    const Text = (Token(/'([^']*)'/g, 'string'), Token(/"([^"]*)"/g, 'string'));
+    const Identifier = All(_, Token(/([a-zA-Z][a-zA-Z0-9_-]*)/, 'identifier'), _);
 
-    const TagAttr = Node(All(Identifier, '=', Text), ([name, value]) => ({ name, value }));
+    const TagAttr = Node(All(Identifier, '=', String_), ([name, literal]) => ({
+      name,
+      value: literal.value,
+    }));
     const TagAttrBlock = Node(
-      All('(', TagAttr, Optional(Plus(All(',', TagAttr))), ')'),
+      All(_, '(', TagAttr, Optional(Plus(All(',', TagAttr))), ')', _),
       (stack) => ({ attributes: stack }),
     );
     const TagId = Node(All('#', Identifier), ([id]) => ({ id }));
@@ -31,13 +36,18 @@ function grammar({ Token, All, Any, Plus, Optional, Node }) {
       ([name, ...rest]) => rest.reduce((acc, e) => Object.assign(acc, e), { name }),
     );
 
-    const TagBody = Node(All('[', ThisGrammar, ']'), ([body]) => ({ body }));
+    const TagBody = Node(All(_, '[', _, Expression, _, ']', _), ([body]) => ({ body }));
 
-    const Tag = Node(All(TagHeader, Optional(TagBody)), ([header, body]) =>
-      Object.assign({ type: 'tag', ...header }, body || {}),
-    );
+    const Tag = Node(All(_, TagHeader, Optional(TagBody), _), ([header, body]) => ({
+      type: 'tag',
+      ...header,
+      ...body,
+    }));
 
-    const FreeText = Node(Text, ([value]) => ({ type: 'free text', value }));
+    const FreeText = Node(String_, ([literal]) => ({
+      type: 'free text',
+      value: literal.value,
+    }));
 
     return Node(Plus(Any(Tag, FreeText)), (stack) => stack);
   });

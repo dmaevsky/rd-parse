@@ -2,7 +2,7 @@
 
 A generic minimalist zero dependencies recursive-descent parser generator in Javascript.
 
-Allows you to define your grammar directly in Javascript in a syntax closely related to EBNF. In avoiding the need to compile the grammar, the resultant parser is small to ship and fast to initialize.
+Allows you to define your grammar directly in Javascript using pure functions. In avoiding the need to compile the grammar, the resultant parser is small to ship and fast to initialize.
 
 You will be bound by the limitations of recursive descent parsing, for example you must [remove left recursion in your grammar](https://www.geeksforgeeks.org/removing-direct-and-indirect-left-recursion-in-a-grammar/).
 
@@ -10,15 +10,30 @@ You will be bound by the limitations of recursive descent parsing, for example y
 npm install --save rd-parse
 ```
 
-Usage:
+## Usage
 
-```javascript
+```js
 const Parser = require('rd-parse');
-const Grammar = require('rd-parse-jsexpr');
+
+function Grammar({ Node, Any, All, Optional, Plus, Token }) {
+  const Whitespace = Token(/\s+/);
+  const _ = Optional(Whitespace);
+  const SingleQuoteStringCharacter = Token(/([^'])/);
+  const DoubleQuoteStringCharacter = Token(/([^"])/);
+
+  const SingleQuoteString = All(`'`, Optional(Plus(SingleQuoteStringCharacter)) , `'`);
+  const DoubleQuoteString = All(`"`, Optional(Plus(DoubleQuoteStringCharacter)) , `"`);
+
+  const String = Node(All(_, Any(SingleQuoteString, DoubleQuoteString), _), (charTokens) => ({
+    type: 'StringLiteral',
+    value: charTokens.join('')
+  }));
+})
 
 const p = new Parser(Grammar);
 
-const ast = p.parse(`[1,2,3].map(a => a*a).reduce((a,b) => a + b)`);
+p.parse(`'abc'\n`); // { type: 'StringLiteral', value: `abc` }
+p.parse(`":'D"`); // { type: 'StringLiteral', value: `:'D` }
 ```
 
 ## Grammar definition rules
@@ -70,7 +85,8 @@ _Note_: when you pass a string literal as a rule, it will be matched as is, and 
 `All` callback matches all argument rules in order.  
 `Any` tries argument rules from left to right and reports a match once successful.  
 `Plus` matches the argument rule one or more times.  
-`Optional` matches the argument rule one or zero times.
+`Optional` matches the argument rule one or zero times.  
+`Debug` inserts a `debugger` statement before the argument rule is evaluated.
 
 If your grammar is recursive (which is often the case), you might need to wrap it in a _Y-combinator_, as shown in the examples.
 

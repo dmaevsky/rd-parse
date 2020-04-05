@@ -1,13 +1,10 @@
-const IGNORE = 'ignore';
-const VERBATIM = 'verbatim';
+const cloneRegExp = require('clone-regexp');
+const { equals, indexOfAny } = require('./text-utils');
 
-class Parser {
-  static parse(grammar, text) {
-    return new Parser(grammar).parse(text);
-  }
+const lineTerminators = ['\r\n', '\n'];
 
+class RuleEngine {
   constructor(grammar) {
-    this._tokens = [];
     this._boundGrammar = grammar({
       Token: this.Token.bind(this),
       All: this.All.bind(this),
@@ -15,108 +12,92 @@ class Parser {
       Plus: this.Plus.bind(this),
       Optional: this.Optional.bind(this),
       Node: this.Node.bind(this),
+      Debug: this.Debug.bind(this),
     });
   }
 
-  registerToken(pattern, type) {
-    this._tokens.push({
-      pattern: pattern,
-      type: type,
+  sanitizeRule(rule) {
+    if (typeof rule === 'string') {
+      return this.StringToken(rule);
+    } else if (typeof rule === 'function') {
+      return rule;
+    } else {
+      throw new Error('A rule must be a string or a function');
+    }
+  }
+
+  acceptToken(ctx, $, accepted) {
+    let { tp, lp, col } = $;
+
+    const endTp = tp + accepted.length;
+    const { lines } = ctx;
+
+    while (lines[lp + 1] < endTp) {
+      lp++;
+    }
+
+    col = lines[lp + 1] - endTp;
+    tp += accepted.length;
+
+    return { tp, lp, col };
+  }
+
+  RegexToken(pattern) {
+    const pattern_ = cloneRegExp(pattern, {
+      // By adding and empty capture as an alternative, we ensure that the
+      // engine won't look ahead. Technique cribbed from:
+      // https://mrale.ph/blog/2016/11/23/making-less-dart-faster.html
+      source: `${pattern.source}|()`,
+      global: true,
     });
-  }
 
-  // Lexer: split the text into an array of lexical token nodes
-  lexer(text) {
-    const nodes = [];
-    let pos = 0;
+    return (ctx, $) => {
+      const { stack, text } = ctx;
 
-    while (pos < text.length) {
-      const here = pos;
-
-      // Try matching all tokens
-      for (let i = 0; i < this._tokens.length; i++) {
-        const token = this._tokens[i];
-
-        token.pattern.lastIndex = here;
-        const match = token.pattern.exec(text);
-
-        if (match && match.index === here) {
-          // matched a token
-          pos += match[0].length;
-
-          if (token.type !== IGNORE) {
-            nodes.push({
-              start: here,
-              end: pos,
-              type: token.type,
-              captures: match.slice(1),
-            });
-          }
-
-          break;
-        }
+      pattern_.lastIndex = $.tp;
+      const match = pattern_.exec(text);
+      if (match == null || match[0] == '') {
+        return $;
       }
 
-      if (pos === here) {
-        // We tried all the tokens but could not move forward -> something is wrong
-        throw new Error('Unexpected token at position ' + pos + '. Remainder: ' + text.substr(pos));
+      // Type is matched -> push all captures to the stack
+      stack.splice($.sp);
+      stack.push(...match.slice(1, -1)); // -1 eliminates the empty capture
+      return { ...$, ...this.acceptToken(ctx, $, match[0]), sp: stack.length };
+    };
+  }
+
+  StringToken(value) {
+    return (ctx, $) => {
+      if (!equals(value, ctx.text, $.tp)) {
+        return $;
       }
-    }
-    return nodes;
-  }
 
-  // ==============
-  // GRAMMAR PARSER
-  // ==============
-
-  // Keep track of the last matched token and advance to the next
-  nextToken($, newProp) {
-    if ($.context.lastSeen < $.ti) {
-      $.context.lastSeen = $.ti;
-    }
-    return { ...$, ...newProp };
-  }
-
-  // Match verbatim text
-  Verbatim(text) {
-    return ($) => {
-      let token = $.context.tokens[$.ti];
-      if (!token || token.type !== VERBATIM) return $;
-      if (token.captures[0] !== text) return $;
-      return this.nextToken($, { ti: $.ti + 1 });
+      return { ...$, ...this.acceptToken(ctx, $, value) };
     };
   }
 
   // Match a token
-  Token(pattern, type) {
-    this.registerToken(pattern, type);
-
-    return ($) => {
-      let token = $.context.tokens[$.ti];
-      if (!token || token.type !== type) return $;
-
-      // Type is matched -> push all captures to the stack
-      let stack = $.context.stack;
-      stack.splice($.sp);
-      stack.push(...token.captures);
-      return this.nextToken($, { ti: $.ti + 1, sp: stack.length });
-    };
-  }
-
-  // Wrapper to accept verbatim rules
-  Apply(rule) {
-    if (typeof rule === 'function') return rule;
-    return this.Verbatim(rule);
+  Token(value) {
+    if (typeof value === 'string') {
+      return this.StringToken(value);
+    } else if (value instanceof RegExp) {
+      return this.RegexToken(value);
+    } else {
+      throw new Error('Token value must be either a string or regular expression');
+    }
   }
 
   // Match a sequence of rules left to right
-  All(...args) {
-    const rules = args.map((arg) => this.Apply(arg));
+  All(...rules) {
+    const rules_ = rules.map((arg) => this.sanitizeRule(arg));
 
-    return ($) => {
+    return (ctx, $) => {
       for (var i = 0, $cur = $; i < rules.length; i++) {
-        const $next = rules[i]($cur);
-        if ($next === $cur) return $; // if one rule fails: fail all
+        const $next = rules_[i](ctx, $cur);
+        if ($next === $cur) {
+          return $; // if one rule fails: fail all
+        }
         $cur = $next;
       }
       return $cur;
@@ -124,13 +105,15 @@ class Parser {
   }
 
   // Match any of the rules with left-to-right preference
-  Any(...args) {
-    const rules = args.map((arg) => this.Apply(arg));
+  Any(...rules) {
+    const rules_ = rules.map((arg) => this.sanitizeRule(arg));
 
-    return ($) => {
-      for (var i = 0; i < rules.length; i++) {
-        const $next = rules[i]($);
-        if ($next !== $) return $next; // when one rule matches: return the match
+    return (ctx, $) => {
+      for (var i = 0; i < rules_.length; i++) {
+        const $next = rules_[i](ctx, $);
+        if ($next !== $) {
+          return $next;
+        } // when one rule matches: return the match
       }
       return $;
     };
@@ -138,67 +121,112 @@ class Parser {
 
   // Match a rule 1 or more times
   Plus(rule) {
-    const appliedRule = this.Apply(rule);
+    const rule_ = this.sanitizeRule(rule);
 
-    return ($) => {
+    return (ctx, $) => {
       let $cur, $next;
-      for ($cur = $; ($next = appliedRule($cur)) !== $cur; $cur = $next);
+      for ($cur = $; ($next = rule_(ctx, $cur)) !== $cur; $cur = $next);
+      if ($cur === $) {
+      } else {
+      }
       return $cur;
     };
   }
 
   // Match a rule optionally
   Optional(rule) {
-    rule = this.Apply(rule);
+    const rule_ = this.sanitizeRule(rule);
 
-    return ($) => {
-      const $next = rule($);
+    return (ctx, $) => {
+      const $next = rule_(ctx, $);
       if ($next !== $) return $next;
 
       // Otherwise return a shallow copy of the state to still indicate a match
-      return Object.assign({}, $);
+      return { ...$ };
     };
   }
 
   Node(rule, reducer) {
-    const appliedRule = this.Apply(rule);
+    const rule_ = this.sanitizeRule(rule);
 
-    return ($) => {
-      const $next = appliedRule($);
+    return (ctx, $) => {
+      const $next = rule_(ctx, $);
       if ($next === $) return $;
 
       // We have a match
-      let stack = $.context.stack;
-      stack.push(reducer(stack.splice($.sp), $, $next));
+      const { stack } = ctx;
+      stack.push(reducer(stack.splice($.sp), ctx, $, $next));
 
       return { ...$next, sp: stack.length };
     };
   }
 
-  parse(text) {
-    const context = {
-      text,
-      tokens: this.lexer(text),
-      stack: [],
-      lastSeen: -1,
+  Debug(rule) {
+    const rule_ = this.sanitizeRule(rule);
+    return (ctx, $) => {
+      debugger;
+      return rule_(ctx, $);
     };
+  }
+
+  tokenizeLines(ctx) {
+    const { lines, text } = ctx;
+
+    let tp = 0;
+    let matchLen = 0;
+    let idx;
+    do {
+      lines.push(tp);
+      [idx, matchLen] = indexOfAny(lineTerminators, text, tp);
+      tp += idx + matchLen;
+    } while (idx >= 0);
+  }
+
+  evaluate(text, { multiline = true } = {}) {
+    const ctx = {
+      text,
+      stack: [],
+      lines: [],
+    };
+
+    if (multiline) {
+      this.tokenizeLines(ctx);
+    }
 
     const $ = {
-      ti: 0,
-      sp: 0,
-      context,
+      sp: 0, // stack pointer
+      tp: 0, // text position
+      lp: 0, // line pointer
+      col: 0, // column in line
     };
 
-    const $next = this._boundGrammar($);
+    const $next = this._boundGrammar(ctx, $);
 
-    if ($next.ti < context.tokens.length) {
+    if ($next.tp < text.length) {
       // Haven't consumed the whole input
-      const err = new Error('Parsing failed');
-      err.context = context;
+      const errPosition = multiline
+        ? `line ${$next.lp + 1} column ${$next.col + 1}`
+        : `pos ${$next.tp}`;
+      const err = new Error(`Parsing failed. Unexpected symbol at ${errPosition}`);
+      err.context = ctx;
       throw err;
     }
 
-    return context.stack[0];
+    return ctx.stack[0];
+  }
+}
+
+class Parser {
+  static parse(grammar, text) {
+    return new Parser(grammar).parse(text);
+  }
+
+  constructor(grammar) {
+    this._ruleEngine = new RuleEngine(grammar);
+  }
+
+  parse(text) {
+    return this._ruleEngine.evaluate(text);
   }
 }
 

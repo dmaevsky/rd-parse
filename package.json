@@ -1,6 +1,6 @@
 {
   "name": "rd-parse",
-  "version": "2.1.5",
+  "version": "3.0.0",
   "description": "Generic minimalist recursive descent parser. Define your grammar in pure Javascript.",
   "main": "./dist/index.js",
   "scripts": {
@@ -26,5 +26,8 @@
     "@babel/preset-env": "^7.5.5",
     "jest": "^25.2.7",
     "prettier": "^2.0.2"
+  },
+  "dependencies": {
+    "clone-regexp": "^2.2.0"
   }
 }

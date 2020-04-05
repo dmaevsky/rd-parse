@@ -1,13 +1,16 @@
-function grammar({ Any, All, Plus, Optional, Token }) {
-  const SingleQuoteStringCharacter = Token(/([^'])/g, 'literal');
-  const DoubleQuoteStringCharacter = Token(/([^"])/g, 'literal');
+function grammar({ Node, Any, All, Optional, Plus, Token }) {
+  const Whitespace = Token(/\s+/);
+  const _ = Optional(Whitespace);
+  const SingleQuoteStringCharacter = Token(/([^'])/);
+  const DoubleQuoteStringCharacter = Token(/([^"])/);
 
   const SingleQuoteString = All(`'`, Optional(Plus(SingleQuoteStringCharacter)), `'`);
   const DoubleQuoteString = All(`"`, Optional(Plus(DoubleQuoteStringCharacter)), `"`);
 
-  const String = Any(SingleQuoteString, DoubleQuoteString);
-
-  return String;
+  return Node(All(_, Any(SingleQuoteString, DoubleQuoteString), _), (value) => ({
+    type: 'StringLiteral',
+    value: value.join(''),
+  }));
 }
 
 module.exports = grammar;
