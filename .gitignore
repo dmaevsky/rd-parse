@@ -4,9 +4,5 @@
 # dependencies
 /node_modules
 
-# testing
-/coverage
-
 # distribution (npm)
 /dist
-

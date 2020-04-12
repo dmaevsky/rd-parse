@@ -1,14 +1,14 @@
 const Y = proc => (x => proc(y => (x(x))(y)))(x => proc(y => (x(x))(y)));
 
 function Grammar({ Ignore, All, Any, Plus, Optional, Node }) {
-  const Identifier = /([a-zA-Z][a-zA-Z0-9_-]*)/g;
+  const Identifier = /^([a-zA-Z][a-zA-Z0-9_-]*)/;
   const Text = Any(
-    /'([^']*)'/g,
-    /"([^"]*)"/g
+    /^'([^']*)'/,
+    /^"([^"]*)"/
   );
 
   // Ignore line comments and all whitespace
-  return Ignore(/\s+|\/\/.*$/gm, Y(ThisGrammar => {
+  return Ignore(/^\s+|^\/\/[^\r\n]*\n/, Y(ThisGrammar => {
 
     const TagAttr = Node(All(Identifier, '=', Text), ([name, value]) => ({name, value}));
     const TagAttrBlock = Node(All('(', TagAttr, Optional(Plus(All(',', TagAttr))), ')'), stack => ({attributes: stack}));

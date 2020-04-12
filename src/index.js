@@ -1,30 +1,20 @@
-function matchAt(pattern, pos, text) {
-  if (!pattern) return null;
-
-  pattern.lastIndex = pos;
-  const match = pattern.exec(text);
-
-  return match && match.index === pos ? match : null;
-}
-
 function Parser(grammar) {
 
   const scanIgnore = $ => {
-    // If we have been here before, we have already moved $.pos past all ignored symbols
-    if ($.pos <= $.lastSeen) return;
-
     const toIgnore = $.ignore[$.ignore.length - 1];
 
-    while (matchAt(toIgnore, $.pos, $.text)) {
-      $.pos = toIgnore.lastIndex;
-    }
+    // If we have been here before, we have already moved $.pos past all ignored symbols
+    if (!toIgnore || $.pos <= $.lastSeen) return;
+
+    for (let match; match = toIgnore.exec($.text.substring($.pos)); $.pos += match[0].length);
+
     $.lastSeen = $.pos;
   }
 
   const RegexToken = pattern => $ => {
     scanIgnore($);
 
-    const match = matchAt(pattern, $.pos, $.text);
+    const match = pattern.exec($.text.substring($.pos));
     if (!match) return $;
 
     // Token is matched -> push all captures to the stack and return the match
