@@ -1,4 +1,4 @@
-body [
+body [    // I am a comment
   div #navbar .navbar.navbar-inverse.navbar-fixed-top [
     div.navbar-inner [
       a(href="#", test="My test").brand ['Awesome']
@@ -9,3 +9,4 @@ body [
     ]
   ]
 ]
+// I am a comment in the end of input

@@ -1,193 +1,165 @@
-module.exports = Parser;
+function matchAt(pattern, pos, text) {
+  if (!pattern) return null;
+
+  pattern.lastIndex = pos;
+  const match = pattern.exec(text);
+
+  return match && match.index === pos ? match : null;
+}
 
 function Parser(grammar) {
-  const IGNORE = 'ignore';
-  const VERBATIM = 'verbatim';
 
-  this.tokens = [];
-  this.registerToken = function(pattern, type) {
-    this.tokens.push({
-      pattern: pattern,
-      type: type
-    });
-  }
+  const scanIgnore = $ => {
+    // If we have been here before, we have already moved $.pos past all ignored symbols
+    if ($.pos <= $.lastSeen) return;
 
-  // Lexer: split the text into an array of lexical token nodes
-  this.lexer = function(text) {
+    const toIgnore = $.ignore[$.ignore.length - 1];
 
-    var nodes = [], pos = 0;
-
-    while (pos < text.length) {
-      var here = pos;
-
-      // Try matching all tokens
-      for (var i = 0; i < this.tokens.length; i++) {
-        var token = this.tokens[i];
-
-        token.pattern.lastIndex = here;
-        var match = token.pattern.exec(text);
-
-        if (match && match.index === here) {    // matched a token
-          pos += match[0].length;
-          
-          if (token.type === IGNORE) break;
-
-          nodes.push({
-            start: here,
-            end: pos,
-            type: token.type,
-            captures: match.slice(1),
-          });
-          break;
-        }
-      }
-
-      if (pos === here) {
-        // We tried all the tokens but could not move forward -> something is wrong
-        throw new Error('Unexpected token at position ' + pos + '. Remainder: ' + text.substr(pos));
-      }
+    while (matchAt(toIgnore, $.pos, $.text)) {
+      $.pos = toIgnore.lastIndex;
     }
-    return nodes;
+    $.lastSeen = $.pos;
   }
 
-  // ==============
-  // GRAMMAR PARSER
-  // ==============
+  const RegexToken = pattern => $ => {
+    scanIgnore($);
 
-  // Keep track of the last matched token and advance to the next
-  function nextToken($, newProp) {
-    if ($.context.lastSeen < $.ti) {
-      $.context.lastSeen = $.ti;
-    }
-    return Object.assign({}, $, newProp);
-  }
+    const match = matchAt(pattern, $.pos, $.text);
+    if (!match) return $;
 
-  var self = this;
+    // Token is matched -> push all captures to the stack and return the match
+    $.stack.splice($.sp);
+    $.stack.push(...match.slice(1));
 
-  // Match verbatim text
-  function Verbatim(text) {
-    return function($) {
-      let token = $.context.tokens[$.ti];
-      if (!token || token.type !== VERBATIM) return $;
-      if (token.captures[0] !== text) return $;
-      return nextToken($, { ti: $.ti + 1});
+    return {
+      ...$,
+      pos: $.pos + match[0].length,
+      sp: $.stack.length
     }
   }
 
-  // Match a token
-  function Token(pattern, type) {
-    self.registerToken(pattern, type);
+  const StringToken = pattern => $ => {
+    scanIgnore($);
 
-    return function($) {
-      let token = $.context.tokens[$.ti];
-      if (!token || token.type !== type) return $;
-
-      // Type is matched -> push all captures to the stack
-      let stack = $.context.stack;
-      stack.splice($.sp);
-      stack.push(...token.captures);
-      return nextToken($, { ti: $.ti + 1, sp: stack.length });
+    if ($.text.startsWith(pattern, $.pos)) {
+      return {
+        ...$,
+        pos: $.pos + pattern.length
+      };
     }
+    return $;
   }
 
-  // Wrapper to accept verbatim rules
-  function Apply(rule) {
+  function Use(rule) {
     if (typeof(rule) === 'function') return rule;
-    return Verbatim(rule);
+    if (rule instanceof RegExp) return RegexToken(rule);
+    if (typeof(rule) === 'string') return StringToken(rule);
+    throw new Error('Invalid rule');
+  }
+
+  function Ignore(pattern, rule) {
+    rule = Use(rule);
+
+    return $ => {
+      $.ignore.push(pattern);
+      const $next = rule($);
+
+      scanIgnore($next);
+      $.ignore.pop();
+
+      return $next;
+    };
   }
 
   // Match a sequence of rules left to right
-  function All() {
-    var rules = Array.prototype.slice.apply(arguments).map(Apply);
+  function All(...rules) {
+    rules = rules.map(Use);
 
-    return function($) {
-      for (var i=0, $cur = $; i < rules.length; i++) {
-        var $next = rules[i]($cur);
+    return $ => {
+      let $cur = $;
+      for (let i = 0; i < rules.length; i++) {
+        const $next = rules[i]($cur);
         if ($next === $cur) return $;   // if one rule fails: fail all
         $cur = $next;
       }
       return $cur;
-    }
+    };
   }
 
   // Match any of the rules with left-to-right preference
-  function Any() {
-    var rules = Array.prototype.slice.apply(arguments).map(Apply);
+  function Any(...rules) {
+    rules = rules.map(Use);
 
-    return function($) {
-      for (var i=0; i < rules.length; i++) {
-        var $next = rules[i]($);
+    return $ => {
+      for (let i = 0; i < rules.length; i++) {
+        const $next = rules[i]($);
         if ($next !== $) return $next;    // when one rule matches: return the match
       }
       return $;
-    }
+    };
   }
 
   // Match a rule 1 or more times
   function Plus(rule) {
-    rule = Apply(rule);
+    rule = Use(rule);
 
-    return function($) {
-      var $cur, $next;
+    return $ => {
+      let $cur, $next;
       for ($cur = $; ($next = rule($cur)) !== $cur; $cur = $next);
       return $cur;
-    }
+    };
   }
 
   // Match a rule optionally
   function Optional(rule) {
-    rule = Apply(rule);
+    rule = Use(rule);
 
-    return function($) {
-      var $next = rule($);
+    return $ => {
+      const $next = rule($);
       if ($next !== $) return $next;
 
       // Otherwise return a shallow copy of the state to still indicate a match
-      return Object.assign({}, $);
-    }
+      return {...$};
+    };
   }
 
   function Node(rule, reducer) {
-    rule = Apply(rule);
-    
-    return function($) {
-      var $next = rule($);
+    rule = Use(rule);
+
+    return $ => {
+      const $next = rule($);
       if ($next === $) return $;
 
       // We have a match
-      let stack = $.context.stack;
-      stack.push(reducer(stack.splice($.sp), $, $next));
+      $.stack.push(reducer($.stack.splice($.sp), $, $next));
 
-      return Object.assign({}, $next, { sp: stack.length });
-    }
+      return {
+        ...$next,
+        sp: $.stack.length
+      };
+    };
   }
 
+  const MatchGrammar = grammar({ Ignore, All, Any, Plus, Optional, Node });
 
-  this.parsingFunction = grammar(Token, All, Any, Plus, Optional, Node);
-
-  this.parse = function(text) {
-
-    var context = {
+  return text => {
+    const $ = {
       text,
-      tokens: this.lexer(text),
+      ignore: [],
       stack: [],
       lastSeen: -1,
+      pos: 0, sp: 0,
     }
 
-    var $ = {
-      ti: 0, sp: 0,
-      context
-    }
+    const $next = MatchGrammar($);
 
-    var $next = this.parsingFunction($);
-
-    if ($next.ti < context.tokens.length) {
+    if ($next.pos < text.length) {
       // Haven't consumed the whole input
-      var err = new Error("Parsing failed");
-      err.context = context;
-      throw err;
+      throw new Error(`Unexpected token at pos ${$.lastSeen}. Remainder: ${text.substring($.lastSeen)}`);
     }
 
-    return context.stack[0];
+    return $.stack[0];
   }
 }
+
+module.exports = Parser;

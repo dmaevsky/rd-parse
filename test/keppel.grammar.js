@@ -1,24 +1,14 @@
-module.exports = Grammar;
+const Y = proc => (x => proc(y => (x(x))(y)))(x => proc(y => (x(x))(y)));
 
-function Grammar(Token, All, Any, Plus, Optional, Node) {
+function Grammar({ Ignore, All, Any, Plus, Optional, Node }) {
+  const Identifier = /([a-zA-Z][a-zA-Z0-9_-]*)/g;
+  const Text = Any(
+    /'([^']*)'/g,
+    /"([^"]*)"/g
+  );
 
-  // Y combinator
-  const Y = function (gen) {
-    return (function(f) {return f(f)})( function(f) {
-      return gen(function() {return f(f).apply(null, arguments)});
-    });
-  }
-
-  return Y(function(ThisGrammar) {
-    // Special token types
-    Token(/\s+|\/\/.*$/g, 'ignore');   // Ignore line comments and all whitespace
-    Token(/([\[\]\(\)#=,\.])/g, 'verbatim');
-
-    const Identifier = Token(/([a-zA-Z][a-zA-Z0-9_-]*)/g, 'identifier');
-    const Text = (
-      Token(/'([^']*)'/g, 'string'),
-      Token(/"([^"]*)"/g, 'string')
-    );
+  // Ignore line comments and all whitespace
+  return Ignore(/\s+|\/\/.*$/gm, Y(ThisGrammar => {
 
     const TagAttr = Node(All(Identifier, '=', Text), ([name, value]) => ({name, value}));
     const TagAttrBlock = Node(All('(', TagAttr, Optional(Plus(All(',', TagAttr))), ')'), stack => ({attributes: stack}));
@@ -36,5 +26,7 @@ function Grammar(Token, All, Any, Plus, Optional, Node) {
     const FreeText = Node(Text, ([value]) => ({ type: 'free text', value }));
 
     return Node(Plus(Any(Tag, FreeText)), stack => stack);
-  });
+  }));
 }
+
+module.exports = Grammar;
