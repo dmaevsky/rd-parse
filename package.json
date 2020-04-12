@@ -1,12 +1,17 @@
 {
   "name": "rd-parse",
-  "version": "2.1.6",
-  "description": "Generic minimalist recursive descent parser. Define your grammar in pure Javascript.",
+  "version": "3.0.0",
+  "description": "Recursive descent parser generator. Define your grammar in pure Javascript.",
   "main": "./dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "ava -v",
     "build": "babel src --out-dir dist",
     "prepublish": "npm run build"
+  },
+  "ava": {
+    "files": [
+      "**/*.spec.js"
+    ]
   },
   "repository": {
     "type": "git",
@@ -22,6 +27,7 @@
   "devDependencies": {
     "@babel/cli": "^7.8.4",
     "@babel/core": "^7.9.0",
-    "@babel/preset-env": "^7.9.5"
+    "@babel/preset-env": "^7.9.5",
+    "ava": "^3.6.0"
   }
 }
