@@ -1,8 +1,8 @@
-const test = require('ava');
-const fs = require('fs');
+import test from 'ava';
+import fs from 'fs';
 
-const Parser = require('../src/index');
-const Grammar = require('./keppel.grammar');
+import Parser from '../src/index';
+import Grammar from './keppel.grammar';
 
 test('Keppel grammar parser generation', t => {
   const parser = Parser(Grammar);

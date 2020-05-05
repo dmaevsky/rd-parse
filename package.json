@@ -3,12 +3,16 @@
   "version": "3.0.0",
   "description": "Recursive descent parser generator. Define your grammar in pure Javascript.",
   "main": "./src/index.js",
+  "module": "./src/index.js",
   "scripts": {
     "test": "ava -v"
   },
   "ava": {
     "files": [
       "**/*.spec.js"
+    ],
+    "require": [
+      "esm"
     ]
   },
   "repository": {
@@ -23,6 +27,7 @@
   "author": "Dmitry Maevsky",
   "license": "MIT",
   "devDependencies": {
-    "ava": "^3.6.0"
+    "ava": "^3.8.1",
+    "esm": "^3.2.25"
   }
 }

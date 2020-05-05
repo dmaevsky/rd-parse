@@ -1,136 +1,139 @@
-function Parser(grammar) {
+const scanIgnore = $ => {
+  const toIgnore = $.ignore[$.ignore.length - 1];
 
-  const scanIgnore = $ => {
-    const toIgnore = $.ignore[$.ignore.length - 1];
+  // If we have been here before, we have already moved $.pos past all ignored symbols
+  if (!toIgnore || $.pos <= $.lastSeen) return;
 
-    // If we have been here before, we have already moved $.pos past all ignored symbols
-    if (!toIgnore || $.pos <= $.lastSeen) return;
+  for (let match; match = toIgnore.exec($.text.substring($.pos)); $.pos += match[0].length);
 
-    for (let match; match = toIgnore.exec($.text.substring($.pos)); $.pos += match[0].length);
+  $.lastSeen = $.pos;
+}
 
-    $.lastSeen = $.pos;
+export const RegexToken = pattern => $ => {
+  scanIgnore($);
+
+  const match = pattern.exec($.text.substring($.pos));
+  if (!match) return $;
+
+  // Token is matched -> push all captures to the stack and return the match
+  $.stack.splice($.sp);
+  $.stack.push(...match.slice(1));
+
+  return {
+    ...$,
+    pos: $.pos + match[0].length,
+    sp: $.stack.length
   }
+}
 
-  const RegexToken = pattern => $ => {
-    scanIgnore($);
+export const StringToken = pattern => $ => {
+  scanIgnore($);
 
-    const match = pattern.exec($.text.substring($.pos));
-    if (!match) return $;
-
-    // Token is matched -> push all captures to the stack and return the match
-    $.stack.splice($.sp);
-    $.stack.push(...match.slice(1));
-
+  if ($.text.startsWith(pattern, $.pos)) {
     return {
       ...$,
-      pos: $.pos + match[0].length,
-      sp: $.stack.length
-    }
+      pos: $.pos + pattern.length
+    };
   }
+  return $;
+}
 
-  const StringToken = pattern => $ => {
-    scanIgnore($);
+export function Use(rule) {
+  if (typeof(rule) === 'function') return rule;
+  if (rule instanceof RegExp) return RegexToken(rule);
+  if (typeof(rule) === 'string') return StringToken(rule);
+  throw new Error('Invalid rule');
+}
 
-    if ($.text.startsWith(pattern, $.pos)) {
-      return {
-        ...$,
-        pos: $.pos + pattern.length
-      };
+export function Ignore(pattern, rule) {
+  rule = Use(rule);
+
+  return $ => {
+    $.ignore.push(pattern);
+    const $next = rule($);
+
+    scanIgnore($next);
+    $.ignore.pop();
+
+    return $next;
+  };
+}
+
+// Match a sequence of rules left to right
+export function All(...rules) {
+  rules = rules.map(Use);
+
+  return $ => {
+    let $cur = $;
+    for (let i = 0; i < rules.length; i++) {
+      const $next = rules[i]($cur);
+      if ($next === $cur) return $;   // if one rule fails: fail all
+      $cur = $next;
+    }
+    return $cur;
+  };
+}
+
+// Match any of the rules with left-to-right preference
+export function Any(...rules) {
+  rules = rules.map(Use);
+
+  return $ => {
+    for (let i = 0; i < rules.length; i++) {
+      const $next = rules[i]($);
+      if ($next !== $) return $next;    // when one rule matches: return the match
     }
     return $;
-  }
+  };
+}
 
-  function Use(rule) {
-    if (typeof(rule) === 'function') return rule;
-    if (rule instanceof RegExp) return RegexToken(rule);
-    if (typeof(rule) === 'string') return StringToken(rule);
-    throw new Error('Invalid rule');
-  }
+// Match a rule 1 or more times
+export function Plus(rule) {
+  rule = Use(rule);
 
-  function Ignore(pattern, rule) {
-    rule = Use(rule);
+  return $ => {
+    let $cur, $next;
+    for ($cur = $; ($next = rule($cur)) !== $cur; $cur = $next);
+    return $cur;
+  };
+}
 
-    return $ => {
-      $.ignore.push(pattern);
-      const $next = rule($);
+// Match a rule optionally
+export function Optional(rule) {
+  rule = Use(rule);
 
-      scanIgnore($next);
-      $.ignore.pop();
+  return $ => {
+    const $next = rule($);
+    if ($next !== $) return $next;
 
-      return $next;
+    // Otherwise return a shallow copy of the state to still indicate a match
+    return {...$};
+  };
+}
+
+export function Node(rule, reducer) {
+  rule = Use(rule);
+
+  return $ => {
+    const $next = rule($);
+    if ($next === $) return $;
+
+    // We have a match
+    $.stack.push(reducer($.stack.splice($.sp), $, $next));
+
+    return {
+      ...$next,
+      sp: $.stack.length
     };
-  }
+  };
+}
 
-  // Match a sequence of rules left to right
-  function All(...rules) {
-    rules = rules.map(Use);
+export const Star = rule => Optional(Plus(rule));
 
-    return $ => {
-      let $cur = $;
-      for (let i = 0; i < rules.length; i++) {
-        const $next = rules[i]($cur);
-        if ($next === $cur) return $;   // if one rule fails: fail all
-        $cur = $next;
-      }
-      return $cur;
-    };
-  }
+// Y combinator: often useful to define recursive grammars
+export const Y = proc => (x => proc(y => (x(x))(y)))(x => proc(y => (x(x))(y)));
 
-  // Match any of the rules with left-to-right preference
-  function Any(...rules) {
-    rules = rules.map(Use);
-
-    return $ => {
-      for (let i = 0; i < rules.length; i++) {
-        const $next = rules[i]($);
-        if ($next !== $) return $next;    // when one rule matches: return the match
-      }
-      return $;
-    };
-  }
-
-  // Match a rule 1 or more times
-  function Plus(rule) {
-    rule = Use(rule);
-
-    return $ => {
-      let $cur, $next;
-      for ($cur = $; ($next = rule($cur)) !== $cur; $cur = $next);
-      return $cur;
-    };
-  }
-
-  // Match a rule optionally
-  function Optional(rule) {
-    rule = Use(rule);
-
-    return $ => {
-      const $next = rule($);
-      if ($next !== $) return $next;
-
-      // Otherwise return a shallow copy of the state to still indicate a match
-      return {...$};
-    };
-  }
-
-  function Node(rule, reducer) {
-    rule = Use(rule);
-
-    return $ => {
-      const $next = rule($);
-      if ($next === $) return $;
-
-      // We have a match
-      $.stack.push(reducer($.stack.splice($.sp), $, $next));
-
-      return {
-        ...$next,
-        sp: $.stack.length
-      };
-    };
-  }
-
-  const MatchGrammar = grammar({ Ignore, All, Any, Plus, Optional, Node });
+export default function Parser(Grammar) {
 
   return text => {
     const $ = {
@@ -141,7 +144,7 @@ function Parser(grammar) {
       pos: 0, sp: 0,
     }
 
-    const $next = MatchGrammar($);
+    const $next = Grammar($);
 
     if ($next.pos < text.length) {
       // Haven't consumed the whole input
@@ -151,5 +154,3 @@ function Parser(grammar) {
     return $.stack[0];
   }
 }
-
-module.exports = Parser;
