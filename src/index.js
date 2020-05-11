@@ -133,17 +133,19 @@ export const Star = rule => Optional(Plus(rule));
 // Y combinator: often useful to define recursive grammars
 export const Y = proc => (x => proc(y => (x(x))(y)))(x => proc(y => (x(x))(y)));
 
+export const START = (text, pos = 0) => ({
+  text,
+  ignore: [],
+  stack: [],
+  sp: 0,
+  lastSeen: pos - 1,
+  pos,
+});
+
 export default function Parser(Grammar) {
 
   return text => {
-    const $ = {
-      text,
-      ignore: [],
-      stack: [],
-      lastSeen: -1,
-      pos: 0, sp: 0,
-    }
-
+    const $ = START(text);
     const $next = Grammar($);
 
     if ($next.pos < text.length) {
