@@ -119,6 +119,7 @@ export function Node(rule, reducer) {
     if ($next === $) return $;
 
     // We have a match
+    $.stack.splice($next.sp);
     $.stack.push(reducer($.stack.splice($.sp), $, $next));
 
     return {
