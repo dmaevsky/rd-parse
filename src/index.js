@@ -143,14 +143,14 @@ export const START = (text, pos = 0) => ({
   pos,
 });
 
-export default function Parser(Grammar) {
+export default function Parser(Grammar, pos = 0, partial = false) {
 
   return text => {
-    const $ = START(text);
+    const $ = START(text, pos);
     const $next = Grammar($);
 
-    if ($next.pos < text.length) {
-      // Haven't consumed the whole input
+    if ($ === $next || !partial && $next.pos < text.length) {
+      // No match or haven't consumed the whole input
       throw new Error(`Unexpected token at pos ${$.lastSeen}. Remainder: ${text.substring($.lastSeen)}`);
     }
 
