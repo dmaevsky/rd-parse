@@ -120,7 +120,9 @@ export function Node(rule, reducer) {
 
     // We have a match
     $.stack.splice($next.sp);
-    $.stack.push(reducer($.stack.splice($.sp), $, $next));
+
+    const node = reducer($.stack.splice($.sp), $, $next);
+    if (node !== null) $.stack.push(node);
 
     return {
       ...$next,
