@@ -148,6 +148,10 @@ export const START = (text, pos = 0) => ({
 export default function Parser(Grammar, pos = 0, partial = false) {
 
   return text => {
+    if (typeof text !== 'string') {
+      throw new Error('Parsing function expects a string input');
+    }
+
     const $ = START(text, pos);
     const $next = Grammar($);
 
