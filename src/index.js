@@ -1,12 +1,28 @@
+function locAt(text, newPos, { pos, line, column }) {
+  while (pos < newPos) {
+    const ch = text[pos++];
+    if (ch === '\n') {
+      column = 1;
+      line++;
+    }
+    else column++;
+  }
+  return { pos, line, column };
+}
+
 const scanIgnore = $ => {
-  const toIgnore = $.ignore[$.ignore.length - 1];
+  if ($.ignore.length) {
+    const toIgnore = $.ignore.pop();
+    const $next = toIgnore ? toIgnore($) : $;
+    $.ignore.push(toIgnore);
 
-  // If we have been here before, we have already moved $.pos past all ignored symbols
-  if (!toIgnore || $.pos <= $.lastSeen) return;
-
-  for (let match; match = toIgnore.exec($.text.substring($.pos)); $.pos += match[0].length);
-
-  $.lastSeen = $.pos;
+    if ($next !== $) {
+      // Make sure ignore rule did not leave anything on the stack
+      $.stack.splice($.sp);
+      $.pos = $next.pos;
+    }
+  }
+  Object.assign($.lastSeen, locAt($.text, $.pos, $.lastSeen));
 }
 
 export const RegexToken = pattern => $ => {
@@ -23,7 +39,7 @@ export const RegexToken = pattern => $ => {
     ...$,
     pos: $.pos + match[0].length,
     sp: $.stack.length
-  }
+  };
 }
 
 export const StringToken = pattern => $ => {
@@ -45,11 +61,12 @@ export function Use(rule) {
   throw new Error('Invalid rule');
 }
 
-export function Ignore(pattern, rule) {
+export function Ignore(toIgnore, rule) {
   rule = Use(rule);
+  toIgnore = Plus(toIgnore);
 
   return $ => {
-    $.ignore.push(pattern);
+    $.ignore.push(toIgnore);
     const $next = rule($);
 
     scanIgnore($next);
@@ -141,7 +158,7 @@ export const START = (text, pos = 0) => ({
   ignore: [],
   stack: [],
   sp: 0,
-  lastSeen: pos - 1,
+  lastSeen: locAt(text, pos, { pos: 0, line: 1, column: 1 }),
   pos,
 });
 
@@ -157,7 +174,7 @@ export default function Parser(Grammar, pos = 0, partial = false) {
 
     if ($ === $next || !partial && $next.pos < text.length) {
       // No match or haven't consumed the whole input
-      throw new Error(`Unexpected token at pos ${$.lastSeen}. Remainder: ${text.substring($.lastSeen)}`);
+      throw new Error(`Unexpected token at ${$.lastSeen.line}:${$.lastSeen.column}. Remainder: ${text.slice($.lastSeen.pos)}`);
     }
 
     return $.stack[0];
