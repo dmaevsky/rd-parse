@@ -63,7 +63,7 @@ export function Use(rule) {
 
 export function Ignore(toIgnore, rule) {
   rule = Use(rule);
-  toIgnore = Plus(toIgnore);
+  if (toIgnore) toIgnore = Plus(toIgnore);
 
   return $ => {
     $.ignore.push(toIgnore);

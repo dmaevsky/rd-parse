@@ -1,6 +1,6 @@
 {
   "name": "rd-parse",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Recursive descent parser generator. Define your grammar in pure Javascript.",
   "main": "./src/index.js",
   "module": "./src/index.js",
