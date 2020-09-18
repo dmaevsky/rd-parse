@@ -12,16 +12,14 @@ function locAt(text, newPos, { pos, line, column }) {
 
 const scanIgnore = $ => {
   if ($.ignore.length) {
-    const toIgnore = $.ignore.pop();
+    const toIgnore = $.ignore[$.ignore.length - 1];
     const $next = toIgnore ? toIgnore($) : $;
-    $.ignore.push(toIgnore);
 
-    if ($next !== $) {
-      // Make sure ignore rule did not leave anything on the stack
-      $.pos = $next.pos;
-    }
+    $.pos = $next.pos;
   }
-  Object.assign($.lastSeen, locAt($.text, $.pos, $.lastSeen));
+  if ($.pos > $.lastSeen.pos) {
+    Object.assign($.lastSeen, locAt($.text, $.pos, $.lastSeen));
+  }
 }
 
 export const RegexToken = pattern => $ => {
@@ -64,7 +62,7 @@ export function Use(rule) {
 
 export function Ignore(toIgnore, rule) {
   rule = Use(rule);
-  if (toIgnore) toIgnore = Plus(toIgnore);
+  if (toIgnore) toIgnore = Ignore(null, Plus(toIgnore));
 
   return $ => {
     $.ignore.push(toIgnore);
