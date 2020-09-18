@@ -18,7 +18,6 @@ const scanIgnore = $ => {
 
     if ($next !== $) {
       // Make sure ignore rule did not leave anything on the stack
-      $.stack.splice($.sp);
       $.pos = $next.pos;
     }
   }
@@ -32,14 +31,16 @@ export const RegexToken = pattern => $ => {
   if (!match) return $;
 
   // Token is matched -> push all captures to the stack and return the match
-  $.stack.splice($.sp);
-  $.stack.push(...match.slice(1));
-
-  return {
+  const $next = {
     ...$,
     pos: $.pos + match[0].length,
-    sp: $.stack.length
   };
+
+  for (let i = 1; i < match.length; i++) {
+    $.stack[$next.sp++] = match[i];
+  }
+
+  return $next;
 }
 
 export const StringToken = pattern => $ => {
@@ -136,15 +137,11 @@ export function Node(rule, reducer) {
     if ($next === $) return $;
 
     // We have a match
-    $.stack.splice($next.sp);
+    const node = reducer($.stack.slice($.sp, $next.sp), $, $next);
+    $next.sp = $.sp;
+    if (node !== null) $.stack[$next.sp++] = node;
 
-    const node = reducer($.stack.splice($.sp), $, $next);
-    if (node !== null) $.stack.push(node);
-
-    return {
-      ...$next,
-      sp: $.stack.length
-    };
+    return $next;
   };
 }
 
