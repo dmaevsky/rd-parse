@@ -83,10 +83,10 @@ export function All(...rules) {
   return $ => {
     let $cur = $;
     for (let i = 0; i < rules.length; i++) {
-      if (i > 0) $cur = skipIgnored($cur);
-      const $next = rules[i]($cur);
-      if ($next === $cur) return $;   // if one rule fails: fail all
-      $cur = $next;
+      const $before = i > 0 ? skipIgnored($cur) : $cur;
+      const $after = rules[i]($before);
+      if ($after === $before) return $;   // if one rule fails: fail all
+      if ($after.pos > $before.pos) $cur = $after;   // Prevent adding whitespace if matched an optional rule last
     }
     return $cur;
   };
