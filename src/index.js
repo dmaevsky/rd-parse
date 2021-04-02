@@ -10,20 +10,14 @@ function locAt(text, newPos, { pos, line, column }) {
   return { pos, line, column };
 }
 
-const scanIgnore = $ => {
-  if ($.ignore.length) {
-    const toIgnore = $.ignore[$.ignore.length - 1];
-    const $next = toIgnore ? toIgnore($) : $;
-
-    $.pos = $next.pos;
-  }
+const markSeen = $ => {
   if ($.pos > $.lastSeen.pos) {
     Object.assign($.lastSeen, locAt($.text, $.pos, $.lastSeen));
   }
 }
 
 export const RegexToken = pattern => $ => {
-  scanIgnore($);
+  markSeen($);
 
   const match = pattern.exec($.text.substring($.pos));
   if (!match) return $;
@@ -42,7 +36,7 @@ export const RegexToken = pattern => $ => {
 }
 
 export const StringToken = pattern => $ => {
-  scanIgnore($);
+  markSeen($);
 
   if ($.text.startsWith(pattern, $.pos)) {
     return {
@@ -65,14 +59,21 @@ export function Ignore(toIgnore, rule) {
   if (toIgnore) toIgnore = Ignore(null, Plus(toIgnore));
 
   return $ => {
-    $.ignore.push(toIgnore);
-    const $next = rule($);
+    const $cur = toIgnore ? toIgnore($) : $;
 
-    scanIgnore($next);
+    $.ignore.push(toIgnore);
+    const $next = rule($cur);
     $.ignore.pop();
 
-    return $next;
+    return $next === $cur ? $ : toIgnore ? toIgnore($next) : $next;
   };
+}
+
+const skipIgnored = $ => {
+  if (!$.ignore.length) return $;
+
+  const toIgnore = $.ignore[$.ignore.length - 1];
+  return toIgnore ? toIgnore($) : $;
 }
 
 // Match a sequence of rules left to right
@@ -82,6 +83,7 @@ export function All(...rules) {
   return $ => {
     let $cur = $;
     for (let i = 0; i < rules.length; i++) {
+      if (i > 0) $cur = skipIgnored($cur);
       const $next = rules[i]($cur);
       if ($next === $cur) return $;   // if one rule fails: fail all
       $cur = $next;
@@ -108,9 +110,12 @@ export function Plus(rule) {
   rule = Use(rule);
 
   return $ => {
-    let $cur, $next;
-    for ($cur = $; ($next = rule($cur)) !== $cur; $cur = $next);
-    return $cur;
+    while (true) {
+      const $cur = skipIgnored($);
+      const $next = rule($cur);
+      if ($next === $cur) return $;
+      $ = $next;
+    }
   };
 }
 
