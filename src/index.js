@@ -84,8 +84,10 @@ export function All(...rules) {
     let $cur = $;
     for (let i = 0; i < rules.length; i++) {
       const $before = i > 0 ? skipIgnored($cur) : $cur;
+
       const $after = rules[i]($before);
       if ($after === $before) return $;   // if one rule fails: fail all
+
       if ($after.pos > $before.pos || $after.sp > $before.sp) {
         // Prevent adding whitespace if matched an optional rule last
         // Consequently All will fail if all the rules don't make any progress and don't put anything on stack
