@@ -1,4 +1,4 @@
-import { Ignore, All, Any, Plus, Optional, Node, Y } from '../src';
+import { Ignore, All, Any, Plus, Optional, Node, Y } from '../src/index.js';
 
 const Identifier = /^([a-zA-Z][a-zA-Z0-9_-]*)/;
 const Text = Any(
