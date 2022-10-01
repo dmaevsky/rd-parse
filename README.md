@@ -7,11 +7,6 @@ The parser produces an AST according to the specified grammar.
 To witness the sheer power of this tool, please check out the [ES2015 expression grammar](https://github.com/dmaevsky/rd-parse-jsexpr/blob/master/src/grammar.js):
 Javascript expression grammar, defined in Javascript, and parsed by Javascript !
 
-### V3 release notes
-- rd-parse is now an ES6 module. package.json is not yet compliant with the recently added Node's ESM support, but will be once it's stable. In the meantime use it with `node -r esm` in Node environment
-- Rule constructors are now purely functional independent exports, as is the Parser generator itself: check out the examples
-- No more upfront tokenization. The parser is tokenizing the input as it proceeds, using a stack of lexer contexts (used to easily exclude chunks of input such as whitespace or comments)
-
 Usage:
 ```javascript
     import Parser from 'rd-parse';
@@ -55,8 +50,6 @@ The `SumExpression` rule will match inputs like `a = b + c`.
 `Optional` matches the argument rule one or zero times.<br/>
 `Star` matches the argument rule zero or more times: `Star = rule => Optional(Plus(rule))`.<br/>
 
-If your grammar is recursive (which is often the case), you might need to wrap it in a *Y-combinator*, as shown in the examples. `Y` is exported from the package as a matter of convenience.
-
 ### Building AST
 Use the `Node` helper to define how to build your AST. It has two arguments: the rule to match, and a *reducer* callback: see below.
 
@@ -68,7 +61,6 @@ For example we can wrap the `SumExpression` above in a `Node`:
     const SumExpression = Node(All(Identifier, '=', Identifier, '+', Identifier),
       ([result, left, right]) => ({ type: 'Assignment', result, left, right }));
 ```
-using the power of ES6 arrow functions, destructuring arguments, and shorthand notation.
 The AST for the input `'a = b + c'` would be `{ type: 'Assignment', result: 'a', left: 'b', right: 'c' }`
 
 The [ES2015 expression grammar](https://github.com/dmaevsky/rd-parse-jsexpr/blob/master/src/grammar.js) illustrates many useful constructions.
