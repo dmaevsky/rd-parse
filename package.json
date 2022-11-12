@@ -6,7 +6,7 @@
   "module": "./src/index.js",
   "type": "module",
   "scripts": {
-    "test": "find test -type f -name '*.spec.js' -exec echo \\# utap-src:{} \\; -exec node {} \\; | utap"
+    "test": "find tests -type f -name '*.spec.js' -exec echo \\# utap-src:{} \\; -exec node {} \\; | utap"
   },
   "repository": {
     "type": "git",
